@@ -17,8 +17,7 @@ export class CodeMapLabelService implements CameraChangeSubscriber {
     public static SELECTOR = "codeMapLabelService";
 
     private labels : internalLabel[];
-    private LABEL_WIDTH_DIVISOR: number = 2600; // empirically gathered
-    private LABEL_HEIGHT_DIVISOR: number = 50; // empirically gathered
+    private LABEL_DIVISOR: number = 2500; // empirically gathered
 
     constructor(private threeOrbitControlsService: ThreeOrbitControlsService,
                 private threeCameraService: ThreeCameraService,
@@ -114,7 +113,7 @@ export class CodeMapLabelService implements CameraChangeSubscriber {
         
         const spriteMaterial = new THREE.SpriteMaterial({map : texture});
         const sprite = new THREE.Sprite(spriteMaterial);
-        this.setLabelSize(sprite, canvas.width);
+        this.setLabelSize(sprite);
 
         return {
             sprite: sprite,
@@ -123,10 +122,9 @@ export class CodeMapLabelService implements CameraChangeSubscriber {
         };
     }
 
-    private setLabelSize(sprite: Sprite, currentLabelWidth: number = undefined) {
-        const distance = this.threeCameraService.camera.position.distanceTo(this.threeSceneService.mapGeometry.position);
-        currentLabelWidth = (!currentLabelWidth) ? sprite.material.map.image.width : currentLabelWidth;
-        sprite.scale.set(distance / this.LABEL_WIDTH_DIVISOR * currentLabelWidth,distance / this.LABEL_HEIGHT_DIVISOR,1);
+    private setLabelSize(sprite: Sprite) {
+        const distance = this.threeCameraService.camera.position.distanceTo(sprite.position);
+        sprite.scale.set(distance / this.LABEL_DIVISOR * sprite.material.map.image.width,distance / (this.LABEL_DIVISOR / 52),1);
     }
 
     private makeLine(x: number, y: number, z: number): THREE.Line {

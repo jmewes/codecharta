@@ -1,7 +1,7 @@
 "use strict";
 import {ThreeCameraService} from "./threeCameraService";
 import {IRootScopeService, IAngularEvent} from "angular";
-import {Object3D, OrbitControls, PerspectiveCamera} from "three";
+import {Object3D, OrbitControls, PerspectiveCamera, Vector3} from "three";
 import * as THREE from "three";
 import {ThreeSceneService} from "./threeSceneService";
 
@@ -45,6 +45,12 @@ class ThreeOrbitControlsService {
 
         this.threeCameraService.camera.updateProjectionMatrix();
 
+    }
+
+    public getCodeMapCentre(): Vector3 {
+        const boundingSphereCentre = new THREE.Box3().setFromObject(this.threeSceneService.mapGeometry).getBoundingSphere().center.clone();
+        boundingSphereCentre.setY(0);
+        return boundingSphereCentre;
     }
 
     subscribe(subscriber: CameraChangeSubscriber) {
