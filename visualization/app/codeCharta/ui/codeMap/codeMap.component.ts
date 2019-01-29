@@ -35,7 +35,7 @@ export class CodeMapController implements CodeMapMouseEventServiceSubscriber {
     $postLink() {
         this.threeViewerService.init(this.$element[0].children[0]);
         this.threeViewerService.animate();
-        this.codeMapMouseEventService.start();
+        //this.codeMapMouseEventService.start();
     }
 
     onBuildingRightClicked(building: codeMapBuilding, x: number, y: number, event: angular.IAngularEvent) {

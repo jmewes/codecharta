@@ -71,13 +71,13 @@ export class CodeMapRenderService implements SettingsServiceSubscriber, CodeMapM
      */
     applySettings(s: Settings) {
 
-        if (s.areaMetric && s.heightMetric && s.colorMetric && s.map && s.map.root && s.neutralColorRange && s.deltaColorFlipped != undefined && s.invertHeight != undefined) {
-            this.updateMapGeometry(s);
-        }
-
-        if (s.scaling && s.scaling.x && s.scaling.y && s.scaling.z) {
-            this.scaleMap(s.scaling.x, s.scaling.y, s.scaling.z);
-        }
+        //if (s.areaMetric && s.heightMetric && s.colorMetric && s.map && s.map.root && s.neutralColorRange && s.deltaColorFlipped != undefined && s.invertHeight != undefined) {
+        //    this.updateMapGeometry(s);
+        //}
+//
+        //if (s.scaling && s.scaling.x && s.scaling.y && s.scaling.z) {
+        //    this.scaleMap(s.scaling.x, s.scaling.y, s.scaling.z);
+        //}
     }
 
     public collectNodesToArray(node: node): node[] {
