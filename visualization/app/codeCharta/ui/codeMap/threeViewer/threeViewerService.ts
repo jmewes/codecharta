@@ -9,12 +9,22 @@ export class ThreeViewerService {
     public scene: THREE.Scene;
     public map: THREE.Mesh;
     public controls: THREE.OrbitControls;
+
     public targetDot: THREE.Mesh;
+
+    public rearAlignmentCube: THREE.Mesh;
+
 
     init(element: Element) {
 
         // scene 
         this.scene = new THREE.Scene();
+
+        // scene floor
+        var size = 1000;
+        var divisions = 1000;
+        var gridHelper = new THREE.GridHelper(size, divisions);
+        this.scene.add(gridHelper);
 
         // cube
         this.map = new THREE.Mesh(new THREE.CubeGeometry(200, 200, 200), new THREE.MeshNormalMaterial());
@@ -24,6 +34,10 @@ export class ThreeViewerService {
         this.targetDot = new THREE.Mesh(new THREE.CubeGeometry(20, 20, 20), new THREE.MeshNormalMaterial());
         this.scene.add(this.targetDot);
 
+        // alignment cubes
+        this.rearAlignmentCube = new THREE.Mesh(new THREE.CubeGeometry(10, 10, 10), new THREE.MeshNormalMaterial());
+        this.targetDot.add(this.rearAlignmentCube);
+        this.rearAlignmentCube.translateZ(-50)
 
         // lights
         this.scene.add(this.buildLights());
@@ -53,31 +67,39 @@ export class ThreeViewerService {
         window.addEventListener("resize", this.onWindowResize.bind(this), false);
 
         //add method to window for debugging, use window.setAngle(x,y,z) in chrome console
-        window["setAngle"] = this.setMapAngleRelativeToUserView.bind(this);
+        window["setViewDirection"] = this.rotateCameraInVectorDirection.bind(this);
+        window["setFrontalView"] = () => this.rotateCameraInVectorDirection(0,0,-1)
+        window["setDiagonalFromTopFrontalView"] = () => this.rotateCameraInVectorDirection(0,-1,-1)
+
+
     }
 
-    private setMapAngleRelativeToUserView(x, y, z) {
+    /**
+     * This rotates the camera around the controls target (pivot point of orbit controls) 
+     * in a way that the camera ends up looking in the same direction as the given vector. 
+     * It does not look at the same point, just the direction.
+     */
+    private rotateCameraInVectorDirection(x, y, z) {
 
-        // save old position
-        const oldPosition = this.map.position.clone();
+        // remember distance from camera to target
+        const distance = this.camera.position.sub(this.controls.target).length();
 
-        // move to camera target 
-        this.map.position.x = this.controls.target.x;
-        this.map.position.y = this.controls.target.y;
-        this.map.position.z = this.controls.target.z;
+        // move camera into target
+        this.camera.position.x = this.controls.target.x;
+        this.camera.position.y = this.controls.target.y;
+        this.camera.position.z = this.controls.target.z;
 
-        // reset rotation so the map faces the camera, this only is correct in the controls target
-        this.map.lookAt(this.camera.position);
+        // look at the correct alignment cube
+        const alignmentCube = new THREE.Mesh(new THREE.CubeGeometry(5, 5, 5), new THREE.MeshNormalMaterial());
+        this.targetDot.add(alignmentCube);
+        alignmentCube.translateX(x)
+        alignmentCube.translateY(y)
+        alignmentCube.translateZ(z)
+        this.camera.lookAt(alignmentCube.getWorldPosition());
+        this.targetDot.remove(alignmentCube);
 
-        // rotate, maybe we should use matrix or quats
-        this.map.rotateX(THREE.Math.degToRad(x));
-        this.map.rotateY(THREE.Math.degToRad(y));
-        this.map.rotateZ(THREE.Math.degToRad(z));
-
-        // move back to old position
-        this.map.position.x = oldPosition.x;
-        this.map.position.y = oldPosition.y;
-        this.map.position.z = oldPosition.z;
+        // move camera back for the original distance
+        this.camera.translateZ(distance);
 
     }
 
