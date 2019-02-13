@@ -2,7 +2,7 @@ import * as THREE from "three";
 import {node} from "./rendering/node";
 import {AngularColors, renderSettings} from "./rendering/renderSettings";
 import {CameraChangeSubscriber, ThreeOrbitControlsService} from "./threeViewer/threeOrbitControlsService";
-import {PerspectiveCamera, Sprite} from "three";
+import {PerspectiveCamera, Sprite, Vector3} from "three";
 import {ThreeCameraService} from "./threeViewer/threeCameraService";
 import {ThreeSceneService} from "./threeViewer/threeSceneService";
 
@@ -113,7 +113,7 @@ export class CodeMapLabelService implements CameraChangeSubscriber {
         
         const spriteMaterial = new THREE.SpriteMaterial({map : texture});
         const sprite = new THREE.Sprite(spriteMaterial);
-        this.setLabelSize(sprite);
+        this.setLabelSize(sprite, true);
 
         return {
             sprite: sprite,
@@ -122,9 +122,18 @@ export class CodeMapLabelService implements CameraChangeSubscriber {
         };
     }
 
-    private setLabelSize(sprite: Sprite) {
-        const distance = this.threeCameraService.camera.position.distanceTo(sprite.position);
-        sprite.scale.set(distance / this.LABEL_DIVISOR * sprite.material.map.image.width,distance / (this.LABEL_DIVISOR / 52),1);
+    private setLabelSize(sprite: Sprite, onload = undefined) {
+        let distance = this.threeCameraService.camera.position.distanceTo(sprite.position);
+
+        if (sprite.position.equals(new Vector3(0,0,0))) {
+            distance = onload ? distance - 356 : distance;
+        }
+
+        sprite.scale.set(
+            distance / this.LABEL_DIVISOR * sprite.material.map.image.width,
+            distance / (this.LABEL_DIVISOR / 52),
+            1
+        );
     }
 
     private makeLine(x: number, y: number, z: number): THREE.Line {
