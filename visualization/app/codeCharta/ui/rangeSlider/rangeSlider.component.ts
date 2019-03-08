@@ -1,8 +1,8 @@
 import {DataService} from "../../core/data/data.service";
-import {Settings, SettingsService, SettingsServiceSubscriber} from "../../core/settings/settings.service";
-import $ from "jquery";
+import {KindOfMap, Settings, SettingsService, SettingsServiceSubscriber} from "../../core/settings/settings.service";
 import "./rangeSlider.component.scss";
 import {MapColors} from "../codeMap/rendering/renderSettings";
+import $ from "jquery";
 
 export class RangeSliderController implements SettingsServiceSubscriber {
 
@@ -17,25 +17,27 @@ export class RangeSliderController implements SettingsServiceSubscriber {
         this.settingsService.subscribe(this);
         this.initSliderOptions();
 
-        $timeout(function() {
+        $timeout(() => {
             $scope.$broadcast('rzSliderForceRender')
         })
 
     }
 
-    onSettingsChanged(settings: Settings) {
+    public onSettingsChanged(settings: Settings) {
         this.initSliderOptions(settings);
         this.updateSliderColors();
     }
 
-    initSliderOptions(settings: Settings = this.settingsService.settings) {
-        this.maxMetricValue = this.dataService.getMaxMetricInAllRevisions(settings.colorMetric)
+    public initSliderOptions(settings: Settings = this.settingsService.settings) {
+        this.maxMetricValue = this.dataService.getMaxMetricInAllRevisions(settings.colorMetric);
+
         this.sliderOptions = {
             ceil: this.maxMetricValue,
             onChange: this.onSliderChange.bind(this),
             pushRange: true,
             onToChange: this.onToSliderChange.bind(this),
-            onFromChange: this.onFromSliderChange.bind(this)
+            onFromChange: this.onFromSliderChange.bind(this),
+            disabled: this.settingsService.settings.mode == KindOfMap.Delta,
         };
     }
 
@@ -64,16 +66,29 @@ export class RangeSliderController implements SettingsServiceSubscriber {
     }
 
     private updateSliderColors() {
+        const rangeFromPercentage = 100 / this.maxMetricValue * this.settingsService.settings.neutralColorRange.from;
+        let rangeColors = this.sliderOptions.disabled ? this.getGreyRangeColors() : this.getColoredRangeColors();
+        this.applyCssSettings(rangeColors, rangeFromPercentage);
+    }
+
+    private getGreyRangeColors() {
+        return {
+            left: MapColors.lightGrey,
+            middle: MapColors.lightGrey,
+            right: MapColors.lightGrey,
+        };
+    }
+
+    private getColoredRangeColors() {
         const s = this.settingsService.settings;
-        const rangeFromPercentage = 100 / this.maxMetricValue * s.neutralColorRange.from;
+        let mapColorPositive = s.whiteColorBuildings ? MapColors.lightGrey : MapColors.positive;
 
         let rangeColors = {
-            left: s.neutralColorRange.flipped ? MapColors.negative : MapColors.positive,
+            left: s.neutralColorRange.flipped ? MapColors.negative : mapColorPositive,
             middle: MapColors.neutral,
-            right: s.neutralColorRange.flipped ? MapColors.positive : MapColors.negative
+            right: s.neutralColorRange.flipped ? mapColorPositive : MapColors.negative
         };
-
-        this.applyCssSettings(rangeColors, rangeFromPercentage);
+        return rangeColors;
     }
 
     private applyCssSettings(rangeColors, rangeFromPercentage) {
@@ -82,9 +97,9 @@ export class RangeSliderController implements SettingsServiceSubscriber {
         const middleSection = slider.find(".rz-selection");
         const rightSection = slider.find(".rz-right-out-selection .rz-bar");
 
-        leftSection.css("cssText", "background: #" + rangeColors.left.toString(16) + " !important; width: " + rangeFromPercentage + "%;");
-        middleSection.css("cssText", "background: #" + rangeColors.middle.toString(16) + " !important;");
-        rightSection.css("cssText", "background: #" + rangeColors.right.toString(16) + ";");
+        leftSection.css("cssText", "background: " + rangeColors.left + " !important; width: " + rangeFromPercentage + "%;");
+        middleSection.css("cssText", "background: " + rangeColors.middle + " !important;");
+        rightSection.css("cssText", "background: " + rangeColors.right + ";");
     }
 
 }

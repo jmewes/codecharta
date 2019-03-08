@@ -1,22 +1,23 @@
 import {SettingsService} from "../../core/settings/settings.service";
-import {IRootScopeService} from "angular";
+import {IRootScopeService, IAngularEvent} from "angular";
 import {CodeMapNode, BlacklistType} from "../../core/data/model/CodeMap";
 import {NodeContextMenuController} from "../nodeContextMenu/nodeContextMenu.component";
 import {CodeMapActionsService} from "../codeMap/codeMap.actions.service";
 import {CodeMapUtilService} from "../codeMap/codeMap.util.service";
-import {AngularColors} from "../codeMap/rendering/renderSettings";
+import { CodeMapMouseEventServiceSubscriber, CodeMapBuildingTransition, CodeMapMouseEventService } from "../codeMap/codeMap.mouseEvent.service";
+import { CodeMapBuilding } from "../codeMap/rendering/codeMapBuilding";
 
 export interface MapTreeViewHoverEventSubscriber {
     onShouldHoverNode(node: CodeMapNode);
     onShouldUnhoverNode(node: CodeMapNode);
 }
 
-export class MapTreeViewLevelController {
+export class MapTreeViewLevelController implements CodeMapMouseEventServiceSubscriber{
 
+    public _isHoveredInCodeMap: boolean = false;
     public node: CodeMapNode = null;
     public depth: number = 0;
     public collapsed: boolean = true;
-    public angularGreen: string = AngularColors.green;
 
     /* @ngInject */
     constructor(
@@ -24,58 +25,70 @@ export class MapTreeViewLevelController {
         private codeMapActionsService: CodeMapActionsService,
         private settingsService: SettingsService
     ) {
-
+        CodeMapMouseEventService.subscribe(this.$rootScope, this);
     }
 
-    static subscribeToHoverEvents($rootScope: IRootScopeService, subscriber: MapTreeViewHoverEventSubscriber){
-        $rootScope.$on("should-hover-node", (event, args)=>subscriber.onShouldHoverNode(args));
-        $rootScope.$on("should-unhover-node", (event, args)=>subscriber.onShouldUnhoverNode(args));
-    }
+    public getMarkingColor() {
+        let defaultColor = "#000";
 
-    getFolderColor() {
-        if(!this.node) {
-            return "#000";
+        if(!this.node || this.node.type == "File") {
+            return defaultColor;
         }
-        return this.node.markingColor ? "#" + this.node.markingColor.substr(2) : "#000";
+        const markingColor = CodeMapUtilService.getMarkingColor(this.node, this.settingsService.settings.markedPackages);
+        return markingColor ? markingColor : defaultColor;
     }
 
-    onMouseEnter() {
+    public onBuildingHovered(data: CodeMapBuildingTransition, event: IAngularEvent) {
+        if(data.to && data.to.node && this.node && this.node.path && data.to.node.path === this.node.path) {
+            this._isHoveredInCodeMap = true;
+        } else {
+            this._isHoveredInCodeMap = false;
+        }
+    }
+    public onBuildingSelected(data: CodeMapBuildingTransition, event: IAngularEvent) {
+        // unused
+    }
+    public onBuildingRightClicked(building: CodeMapBuilding, x: number, y: number, event: IAngularEvent) {
+        // unused
+    }
+
+    public onMouseEnter() {
         this.$rootScope.$broadcast("should-hover-node", this.node);
     }
 
-    onMouseLeave() {
+    public onMouseLeave() {
         this.$rootScope.$broadcast("should-unhover-node", this.node);
     }
 
-    onRightClick($event) {
+    public onRightClick($event) {
         NodeContextMenuController.broadcastHideEvent(this.$rootScope);
         NodeContextMenuController.broadcastShowEvent(this.$rootScope, this.node.path, this.node.type, $event.clientX, $event.clientY);
     }
 
-    onFolderClick() {
+    public onFolderClick() {
         this.collapsed = !this.collapsed;
     }
 
-    onLabelClick() {
+    public onLabelClick() {
         this.codeMapActionsService.focusNode(this.node);
     }
 
-    onEyeClick() {
+    public onEyeClick() {
         this.codeMapActionsService.toggleNodeVisibility(this.node);
     }
 
-    isLeaf(node: CodeMapNode = this.node): boolean {
+    public isLeaf(node: CodeMapNode = this.node): boolean {
         return !(node && node.children && node.children.length > 0);
     }
 
-    isBlacklisted(node: CodeMapNode): boolean {
+    public isBlacklisted(node: CodeMapNode): boolean {
         if (node != null) {
             return CodeMapUtilService.isBlacklisted(node, this.settingsService.settings.blacklist, BlacklistType.exclude)
         }
         return false;
     }
 
-    isSearched(node: CodeMapNode): boolean {
+    public isSearched(node: CodeMapNode): boolean {
         if (node != null && this.settingsService.settings.searchedNodePaths) {
             return this.settingsService.settings.searchedNodePaths.filter(path =>
                 path == node.path).length > 0;
@@ -83,8 +96,13 @@ export class MapTreeViewLevelController {
         return false;
     }
 
-    sortByFolder(node: CodeMapNode) {
+    public sortByFolder(node: CodeMapNode) {
         return (node && node.children && node.children.length > 0) ? 1 : 0;
+    }
+
+    public static subscribeToHoverEvents($rootScope: IRootScopeService, subscriber: MapTreeViewHoverEventSubscriber){
+        $rootScope.$on("should-hover-node", (event, args)=>subscriber.onShouldHoverNode(args));
+        $rootScope.$on("should-unhover-node", (event, args)=>subscriber.onShouldUnhoverNode(args));
     }
 
 }

@@ -1,8 +1,8 @@
-export interface nodeAttributes {
+export interface NodeAttributes {
     readonly [key : string] : number;
 }
 
-export interface node {
+export interface Node {
     name : string;
     width : number;
     height : number;
@@ -12,15 +12,15 @@ export interface node {
     z0 : number;
     y0 : number;
     isLeaf : boolean;
-    deltas : nodeAttributes;
-    attributes : nodeAttributes;
-    children : node[];
-    parent : node;
+    deltas : NodeAttributes;
+    attributes : NodeAttributes;
+    children : Node[];
+    parent : Node;
     heightDelta : number;
     visible : boolean;
     path : string;
     origin : string;
     link : string;
-    markingColor: number;
+    markingColor: string;
     flat: boolean;
 }

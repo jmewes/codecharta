@@ -1,8 +1,9 @@
 import {CodeMapNode, BlacklistItem, BlacklistType} from "../../core/data/model/CodeMap";
 import {hierarchy} from "d3-hierarchy";
-import {SettingsService} from "../../core/settings/settings.service";
+import {MarkedPackage, SettingsService} from "../../core/settings/settings.service";
 import ignore from 'ignore';
 import * as path from 'path';
+import {SquarifiedValuedCodeMapNode, TreeMapSettings} from "../../core/treemap/treemap.service";
 
 export class CodeMapUtilService {
 
@@ -11,6 +12,30 @@ export class CodeMapUtilService {
     constructor(
         private settingsService: SettingsService
     ) {
+    }
+
+    public getAnyCodeMapNodeFromPath(path: string) {
+        const firstTryNode = this.getCodeMapNodeFromPath(path, "File");
+        if(!firstTryNode) {
+            return this.getCodeMapNodeFromPath(path, "Folder");
+        }
+        return firstTryNode;
+    }
+
+    public getCodeMapNodeFromPath(path: string, nodeType: string) {
+        let res = null;
+        const rootNode = this.settingsService.settings.map.nodes;
+
+        if (path == rootNode.path) {
+            return rootNode;
+        }
+
+        hierarchy<CodeMapNode>(rootNode).each((hierarchyNode) => {
+            if (hierarchyNode.data.path === path && hierarchyNode.data.type === nodeType) {
+                res = hierarchyNode.data;
+            }
+        });
+        return res;
     }
 
     public static transformPath(toTransform): string {
@@ -45,27 +70,17 @@ export class CodeMapUtilService {
         return ig.ignores(CodeMapUtilService.transformPath(node.path));
     }
 
-    getAnyCodeMapNodeFromPath(path: string) {
-        var firstTryNode = this.getCodeMapNodeFromPath(path, "File");
-        if(!firstTryNode) {
-            return this.getCodeMapNodeFromPath(path, "Folder");
-        }
-        return firstTryNode;
-    }
+    public static getMarkingColor(node: CodeMapNode, markedPackages: MarkedPackage[]): string {
+        let markingColor = null;
 
-    getCodeMapNodeFromPath(path: string, nodeType: string) {
-        let res = null;
-        const rootNode = this.settingsService.settings.map.root;
+        if (markedPackages) {
+            let markedParentPackages = markedPackages.filter(mp => node.path.includes(mp.path));
 
-        if (path == rootNode.path) {
-            return rootNode;
-        }
-
-        hierarchy<CodeMapNode>(rootNode).each((hierarchyNode) => {
-            if (hierarchyNode.data.path === path && hierarchyNode.data.type === nodeType) {
-                res = hierarchyNode.data;
+            if (markedParentPackages.length > 0) {
+                let sortedMarkedParentPackages = markedParentPackages.sort((a, b) => b.path.length - a.path.length);
+                markingColor = sortedMarkedParentPackages[0].color;
             }
-        });
-        return res;
+        }
+        return markingColor;
     }
 }

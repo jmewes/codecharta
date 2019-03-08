@@ -37,7 +37,7 @@ describe("app.codeCharta.core.download", function() {
                     projectName: "myProjectName",
                     apiVersion: "1.1.1",
                     fileName: "myFilename",
-                    root: {
+                    nodes: {
                         name: "root",
                         type: "Folder",
                         path: "/root",
@@ -94,14 +94,14 @@ describe("app.codeCharta.core.download", function() {
 
         it("should add date string before json extension", function() {
             const filenameWithDate = downloadService.addDateToFileName("abc.json");
-            var regexp = new RegExp('^abc\.\\d{2}_\\d{2}_\\d{4}\.json$');
+            const regexp = new RegExp('^abc\.\\d{2}_\\d{2}_\\d{4}\.json$');
             expect(regexp.test(filenameWithDate)).toBeTruthy();
         });
 
         it("should remove visible attribute from settings.map", function() {
             withSettingsServiceMock();
-            const rootNode = services.settingsService.settings.map.root;
-            expect(downloadService.removeVisibleAttribute(rootNode)).toMatchSnapshot();
+            const rootNode = services.settingsService.settings.map.nodes;
+            expect(downloadService.removeJsonHashkeysAndVisibleAttribute(rootNode)).toMatchSnapshot();
         });
 
         it("should return correct project json content", function() {

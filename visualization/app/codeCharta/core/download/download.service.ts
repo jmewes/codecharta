@@ -11,6 +11,11 @@ export class DownloadService {
     constructor(private settingsService: SettingsService) {
     }
 
+    public downloadCurrentMap() {
+        const data = this.getProjectDataAsCCJsonFormat();
+        this.downloadData(data, this.getNewFileName());
+    }
+
     private addDateToFileName(fileName) {
         const date = new Date();
         const dateString = date.getDate() + "_" + (date.getMonth() + 1)  + "_" + date.getFullYear();
@@ -26,17 +31,12 @@ export class DownloadService {
         return fileName;
     }
 
-    private removeVisibleAttribute(root: CodeMapNode) {
-        let copy = JSON.parse(JSON.stringify(root));
+    private removeJsonHashkeysAndVisibleAttribute(nodes: CodeMapNode) {
+        let copy = JSON.parse(JSON.stringify(nodes));
         d3.hierarchy(copy).each((node)=>{
             delete node.data.visible;
         });
         return copy;
-    }
-
-    public downloadCurrentMap() {
-        const data = this.getProjectDataAsCCJsonFormat();
-        this.downloadData(data, this.getNewFileName());
     }
 
     private getProjectDataAsCCJsonFormat() {
@@ -48,7 +48,7 @@ export class DownloadService {
             fileName: newFileName,
             projectName: map.projectName,
             apiVersion: map.apiVersion,
-            nodes: [this.removeVisibleAttribute(map.root)],
+            nodes: [this.removeJsonHashkeysAndVisibleAttribute(map.nodes)],
             edges: map.edges,
             attributeTypes: map.attributeTypes,
             blacklist: settings.blacklist,
@@ -61,11 +61,12 @@ export class DownloadService {
     }
 
     private downloadData(data, fileName) {
+        let dataJson = data;
         if (typeof data === "object") {
-            data = angular.toJson(data, 4);
+            dataJson = angular.toJson(data, 4);
         }
 
-        const blob = new Blob([data], {type: "text/json"});
+        const blob = new Blob([dataJson], {type: "text/json"});
         const e = document.createEvent("MouseEvents");
         const a = document.createElement("a");
 

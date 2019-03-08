@@ -13,7 +13,6 @@ export interface MetricData {
 }
 
 export interface DataModel {
-
     revisions: CodeMap[];
     metrics: string[],
     metricData: MetricData[];
@@ -28,6 +27,11 @@ export interface DataServiceSubscriber {
  * This service stores and sets the current revisions, map and metrics
  */
 export class DataService {
+
+
+    get data(): DataModel {
+        return this._data;
+    }
 
     private _data: DataModel;
     private _lastReferenceIndex = 0;
@@ -79,15 +83,6 @@ export class DataService {
         }
     }
 
-    private processDeltas() {
-        if(this._data.renderMap) {
-            this.deltaCalculatorService.removeCrossOriginNodes(this._data.renderMap);
-        }
-        if (this._deltasEnabled && this._data.renderMap && this._lastComparisonMap) {
-            this.deltaCalculatorService.provideDeltas(this._data.renderMap,this._lastComparisonMap, this._data.metrics);
-        }
-    }
-
     public onActivateDeltas() {
         if (!this._deltasEnabled) {
             this._deltasEnabled = true;
@@ -101,11 +96,6 @@ export class DataService {
 
             this.setComparisonMap(this._lastReferenceIndex);
         }
-    }
-
-
-    get data(): DataModel {
-        return this._data;
     }
 
     public subscribe(subscriber: DataServiceSubscriber) {
@@ -158,20 +148,31 @@ export class DataService {
         this._data.metricData = this.getMetricNamesWithMaxValue();
     }
 
+    private processDeltas() {
+        if(this._data.renderMap) {
+            this.deltaCalculatorService.removeCrossOriginNodes(this._data.renderMap);
+        }
+        if (this._deltasEnabled && this._data.renderMap && this._lastComparisonMap) {
+            this.deltaCalculatorService.provideDeltas(this._data.renderMap,this._lastComparisonMap, this._data.metrics);
+        }
+    }
+
     private getUniqueMetricNames(): string[] {
         let leaves: HierarchyNode<CodeMapNode>[] = [];
 
         this._data.revisions.forEach((map)=>{
-            leaves = leaves.concat(d3.hierarchy<CodeMapNode>(map.root).leaves());
+            leaves = leaves.concat(d3.hierarchy<CodeMapNode>(map.nodes).leaves());
         });
 
-        let attributeList: string[][] = leaves.map(function (d: HierarchyNode<CodeMapNode>) {
+        let attributeList: string[][] = leaves.map((d: HierarchyNode<CodeMapNode>) => {
             return d.data.attributes ? Object.keys(d.data.attributes) : [];
         });
 
-        return attributeList.reduce(function (left: string[], right: string[]) {
+        let attributes: string[] = attributeList.reduce((left: string[], right: string[]) => {
             return left.concat(right.filter(el => left.indexOf(el) === -1));
         });
+
+        return attributes.sort();
     }
 
     private getMetricNamesWithMaxValue() {
@@ -180,12 +181,13 @@ export class DataService {
         for(const attribute of this._data.metrics) {
             metricData.push({name: attribute, maxValue: this.getMaxMetricInAllRevisions(attribute)})
         }
-        return metricData;
+        return this.sortByAttributeName(metricData);
     }
 
-    /**
-     * resets all maps (deletes them)
-     */
+    private sortByAttributeName(metricData: MetricData[]): MetricData[] {
+        return metricData.sort((a,b) => (a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0))
+    }
+
     public resetMaps() {
         this._data.revisions = [];
         this._data.metrics = [];
@@ -195,19 +197,20 @@ export class DataService {
         this.notify();
     }
 
-    getMaxMetricInAllRevisions(metric: string) {
+    public getMaxMetricInAllRevisions(metric: string): number {
         let maxValue = 0;
 
         this.data.revisions.forEach((rev)=> {
-            let nodes = d3.hierarchy(rev.root).leaves();
+            let nodes = d3.hierarchy(rev.nodes).leaves();
             nodes.forEach((node: any)=> {
-                if (node.data.attributes[metric] > maxValue) {
-                    maxValue = node.data.attributes[metric];
+                const currentValue = node.data.attributes[metric];
+
+                if (currentValue > maxValue) {
+                    maxValue = currentValue;
                 }
             });
         });
 
         return maxValue;
     }
-
 }

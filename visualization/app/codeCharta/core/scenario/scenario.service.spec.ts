@@ -1,14 +1,9 @@
 import {NGMock} from "../../../../mocks/ng.mockhelper";
-
 import "./scenario.module";
 import {Scenario, ScenarioService} from "./scenario.service";
-import {KindOfMap, SettingsService} from "../settings/settings.service";
-import {createDefaultScenario} from "./scenario.data";
+import {Settings, SettingsService} from "../settings/settings.service";
 import {DataService} from "../data/data.service";
 
-/**
- * @test {ScenatioService}
- */
 describe("app.codeCharta.core.scenarioService", function () {
 
     let scenarioService: ScenarioService,
@@ -18,17 +13,15 @@ describe("app.codeCharta.core.scenarioService", function () {
         dataService: DataService,
         settingsService: SettingsService;
 
-    //noinspection TypeScriptUnresolvedVariable
     beforeEach(NGMock.mock.module("app.codeCharta.core.scenario"));
 
-    //noinspection TypeScriptUnresolvedVariable
     beforeEach(NGMock.mock.inject((_scenarioService_, _settingsService_, _$rootScope_, _dataService_) => {
         scenarioService = _scenarioService_;
         settingsService = _settingsService_;
         dataService = _dataService_;
         $scope = _$rootScope_;
         scenario = {name: "testScenario", settings: settingsService.settings};
-        defaultScenario = createDefaultScenario(settingsService.settings.map);
+        defaultScenario = _scenarioService_.getDefaultScenario();
     }));
 
     it("should apply the settings from a given scenario", () => {
@@ -89,6 +82,31 @@ describe("app.codeCharta.core.scenarioService", function () {
         it("should be impossible when params are null", () => {
             expect(scenarioService.isScenarioPossible(null, null)).toBe(false);
         });
+
+    });
+
+    it("should update only settings, which exist in given scenario", () => {
+        const defaultSettings: Settings = scenarioService.settingsService.getDefaultSettings();
+        const scenario: Scenario = {
+            name: "myScenario",
+            settings: {
+                areaMetric: "myTestAreaMetric",
+                colorMetric: "myTestColorMetric",
+                heightMetric: "myTestHeightMetric",
+                amountOfTopLabels: 42
+            },
+            autoFitCamera: true
+        };
+
+        scenarioService.applyScenario(scenario);
+
+        const s = settingsService.settings;
+        expect(s.areaMetric).toBe(scenario.settings.areaMetric);
+        expect(s.colorMetric).toBe(scenario.settings.colorMetric);
+        expect(s.heightMetric).toBe(scenario.settings.heightMetric);
+        expect(s.amountOfTopLabels).toBe(scenario.settings.amountOfTopLabels);
+        expect(s.whiteColorBuildings).toBe(defaultSettings.whiteColorBuildings);
+        expect(s.isWhiteBackground).toBe(defaultSettings.isWhiteBackground);
 
     });
 

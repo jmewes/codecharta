@@ -1,132 +1,175 @@
-import {AttributeType, CodeMap, CodeMapNode, Edge} from "../data/model/CodeMap";
-import {DialogService} from "../../ui/dialog/dialog.service";
-import {ColorKeywords} from "three";
-import forestgreen = ColorKeywords.forestgreen;
-import {forEachComment} from "tslint";
-
+import { AttributeType, CodeMap, CodeMapNode, Edge, BlacklistItem } from "../data/model/CodeMap"
 
 export class MultipleFileService {
+	public static SELECTOR = "multipleFileService"
+	private projectNameArray = []
+	private fileNameArray = []
+	private edges: Edge[] = []
+	private blacklist: BlacklistItem[] = []
+	private attributeTypesEdge: { [key: string]: AttributeType } = {}
+	private attributeTypesNode: { [key: string]: AttributeType } = {}
 
-    public static SELECTOR = "multipleFileService";
+	public aggregateMaps(inputMaps: CodeMap[]): CodeMap {
+		if (inputMaps.length == 1) {
+			return inputMaps[0]
+		}
 
-    constructor(private dialogService: DialogService) {
+		this.resetVariables()
 
-    }
+		for (let inputMap of inputMaps) {
+			this.projectNameArray.push(inputMap.projectName)
+			this.fileNameArray.push(inputMap.fileName)
+			this.setEdgesWithUpdatedPath(inputMap)
+			this.setAttributeTypesByUniqueKey(inputMap)
+			this.setBlacklistWithUpdatedPath(inputMap)
+		}
+		return this.getNewAggregatedMap(inputMaps)
+	}
 
+	private setEdgesWithUpdatedPath(inputMap) {
+		if (!inputMap.edges) {
+			return
+		}
 
-    public aggregateMaps(inputMaps: CodeMap[]): CodeMap {
+		for (let oldEdge of inputMap.edges) {
+			let edge: Edge = {
+				fromNodeName: this.getUpdatedPath(inputMap.fileName, oldEdge.fromNodeName),
+				toNodeName: this.getUpdatedPath(inputMap.fileName, oldEdge.toNodeName),
+				attributes: oldEdge.attributes,
+				visible: oldEdge.visible
+			}
+			const equalEdgeItems = this.edges.filter(e => e.fromNodeName == edge.fromNodeName && e.toNodeName == edge.toNodeName)
+			if (equalEdgeItems.length == 0) {
+				this.edges.push(edge)
+			}
+		}
+	}
 
-        if(inputMaps.length == 1) return inputMaps[0];
+	private setBlacklistWithUpdatedPath(inputMap) {
+		if (!inputMap.blacklist) {
+			return
+		}
 
-        let projectNameArray = [];
-        let fileNameArray = [];
-        let edges: Edge[];
-        let attributeTypesEdge:{[key: string]: AttributeType} = {};
-        let attributeTypesNode:{[key: string]: AttributeType} = {};
+		for (let oldBlacklistItem of inputMap.blacklist) {
+			let blacklistItem: BlacklistItem = {
+				path: this.getUpdatedBlacklistItemPath(inputMap.fileName, oldBlacklistItem.path),
+				type: oldBlacklistItem.type
+			}
+			const equalBlacklistItems = this.blacklist.filter(b => b.path == blacklistItem.path && b.type == blacklistItem.type)
+			if (equalBlacklistItems.length == 0) {
+				this.blacklist.push(blacklistItem)
+			}
+		}
+	}
 
-        for(let inputMap of inputMaps){
-            projectNameArray.push(inputMap.projectName);
-            fileNameArray.push(inputMap.fileName);
-            if(inputMap.edges){
-                if(!edges){
-                    edges = [];
-                }
-                for(let currentEdge of inputMap.edges){
-                    let edgeOnWork: Edge = {} as Edge;
-                    edgeOnWork["fromNodeName"] = this.updatePath(inputMap.fileName, currentEdge.fromNodeName);
-                    edgeOnWork["toNodeName"] = this.updatePath(inputMap.fileName, currentEdge.toNodeName );
-                    edgeOnWork["attributes"] =  currentEdge.attributes;
+	private getUpdatedBlacklistItemPath(fileName, path) {
+		if (this.isAbsoluteRootPath(path)) {
+			return this.getUpdatedPath(fileName, path)
+		}
+		return path
+	}
 
-                    if(currentEdge.visible ) {
-                        edgeOnWork["visible"] = currentEdge.visible;
-                    }
-                    else if(edgeOnWork.hasOwnProperty("visible") ){
-                        delete edgeOnWork["visible"];
-                    }
+	private isAbsoluteRootPath(path: string) {
+		return path.startsWith("/root/")
+	}
 
-                    edges.push(edgeOnWork);
-                }
-            }
-            if(inputMap.attributeTypes && inputMap.attributeTypes.edges && inputMap.attributeTypes.nodes ){
-                for(let key in inputMap.attributeTypes.edges){
-                    attributeTypesEdge[key] = inputMap.attributeTypes.edges[key];
-                }
-                for(let key in inputMap.attributeTypes.nodes){
-                    attributeTypesNode[key] = inputMap.attributeTypes.nodes[key];
-                }
-            }
+	private setAttributeTypesByUniqueKey(inputMap) {
+		const types = inputMap.attributeTypes
+		if (types && types.nodes) {
+			for (let key in types.nodes) {
+				this.attributeTypesNode[key] = types.nodes[key]
+			}
+		}
+		if (types && types.edges) {
+			for (let key in types.edges) {
+				this.attributeTypesEdge[key] = types.edges[key]
+			}
+		}
+	}
 
-        }
+	private getNewAggregatedMap(inputMaps): CodeMap {
+		let outputMap: CodeMap = {
+			projectName: "Aggregation of following projects: " + this.projectNameArray.join(", "),
+			fileName: "Aggregation of following files: " + this.fileNameArray.join(", "),
+			nodes: {
+				name: "root",
+				type: "Folder",
+				children: [] as CodeMapNode[],
+				attributes: {},
+				origin: "Aggregation of following files: " + this.fileNameArray.join(", "),
+				path: "/root",
+				visible: true
+			},
+			edges: this.edges,
+			blacklist: this.blacklist,
+			attributeTypes: {
+				nodes: this.attributeTypesNode,
+				edges: this.attributeTypesEdge
+			}
+		}
 
-        let outputMap: CodeMap = {
-            projectName: "Aggregation of following projects: " + projectNameArray.join(", "),
-            fileName: "Aggregation of following files: " + fileNameArray.join(", "),
-            root: {
-                name: "root",
-                type: "Folder",
-                children: [] as CodeMapNode[],
-                attributes: {},
-                origin: "Aggregation of following files: " + fileNameArray.join(", "),
-                path: "/root",
-                visible: true
-            }
-        };
-        if(edges){
-            outputMap["edges"] = edges;
-        }
+		for (let inputMap of inputMaps) {
+			outputMap.nodes.children.push(this.extractNodeFromMap(inputMap))
+		}
+		this.aggregateRootAttributes(outputMap)
+		return outputMap
+	}
 
-        if(Object.keys(attributeTypesEdge).length != 0 && Object.keys(attributeTypesNode).length != 0  ){
-            outputMap["attributeTypes"] = {
-                nodes: attributeTypesNode,
-                edges: attributeTypesEdge
-            }
-        }
+	private aggregateRootAttributes(map: CodeMap) {
+		map.nodes.children.forEach(child => {
+			let attributes = child.attributes
+			for (let key in attributes) {
+				if (!(key in map.nodes.attributes)) {
+					map.nodes.attributes[key] = 0
+				}
+				map.nodes.attributes[key] += attributes[key]
+			}
+		})
+	}
 
-        for(let inputMap of inputMaps){
-            outputMap.root.children.push(this.convertMapToNode(inputMap));
-        }
-        return outputMap;
-    }
+	private extractNodeFromMap(inputCodeMap: CodeMap): CodeMapNode {
+		let outputNode: CodeMapNode = {
+			name: inputCodeMap.fileName,
+			children: inputCodeMap.nodes.children
+		} as CodeMapNode
 
-    private convertMapToNode(inputCodeMap: CodeMap): CodeMapNode{
+		if (inputCodeMap.nodes.path) {
+			outputNode.path = this.getUpdatedPath(inputCodeMap.fileName, inputCodeMap.nodes.path)
+		}
 
-        let outputNode: CodeMapNode = {} as CodeMapNode;
-        outputNode["name"]= inputCodeMap.fileName;
+		for (let key in inputCodeMap.nodes) {
+			if (!["name", "path", "children"].includes(key)) {
+				outputNode[key] = inputCodeMap.nodes[key]
+			}
+		}
+		this.updatePathOfAllChildren(inputCodeMap.fileName, outputNode.children)
+		return outputNode
+	}
 
-        for(let property in inputCodeMap.root){
+	private updatePathOfAllChildren(fileName, children: CodeMapNode[]) {
+		for (let i = 0; i < children.length; i++) {
+			if (children[i].path) {
+				children[i].path = this.getUpdatedPath(fileName, children[i].path)
+			}
 
-            if(property == "children"){
-                outputNode[property] = JSON.parse(JSON.stringify(inputCodeMap.root.children));
-            }
-            else if(property == "path"){
-                outputNode[property] = this.updatePath(inputCodeMap.fileName, inputCodeMap.root.path);
-            }
-            else if(property != "name"){
-                outputNode[property] =  inputCodeMap.root[property];
-            }
-        }
+			if (children[i].children) {
+				this.updatePathOfAllChildren(fileName, children[i].children)
+			}
+		}
+	}
 
-        this.updatePathOfAllChildren(inputCodeMap.fileName, outputNode.children);
+	private getUpdatedPath(fileName, path) {
+		const folderArray = path.split("/")
+		folderArray.splice(2, 0, fileName)
+		return folderArray.join("/")
+	}
 
-        return outputNode;
-    }
-
-    private updatePathOfAllChildren(fileName, children: CodeMapNode[]) {
-        for(let i = 0; i < children.length; i++) {
-            if(children[i].path){
-                children[i].path = this.updatePath(fileName, children[i].path);
-            }
-
-            if(children[i].children) {
-                this.updatePathOfAllChildren(fileName, children[i].children);
-            }
-        }
-    }
-
-    private updatePath(fileName, path) {
-        let subPath = path.substring(6, path.length);
-        let slash = (subPath.length > 0) ? "/" : "";
-        let pathName = "/root/" + fileName + slash + subPath;
-        return pathName;
-    }
+	private resetVariables() {
+		this.projectNameArray = []
+		this.fileNameArray = []
+		this.edges = []
+		this.blacklist = []
+		this.attributeTypesEdge = {}
+		this.attributeTypesNode = {}
+	}
 }

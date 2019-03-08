@@ -1,11 +1,10 @@
 "use strict";
 import {Settings, SettingsService} from "../settings/settings.service";
-import {createDefaultScenario} from "./scenario.data";
 import {ThreeOrbitControlsService} from "../../ui/codeMap/threeViewer/threeOrbitControlsService";
 
 export interface Scenario {
     name: string;
-    settings: any;
+    settings: Partial<Settings>;
     autoFitCamera: boolean;
 }
 
@@ -38,24 +37,34 @@ export class ScenarioService {
         }
     }
 
-    /**
-     * Applies a given scenario to the current codecharta session.
-     * @param {Scenario} scenario
-     */
     public applyScenario(scenario: Scenario) {
-        this.settingsService.applySettings(scenario.settings);
+        const updatedSettingsUsingScenario = this.updateSettingsUsingScenario(this.settingsService.settings, scenario.settings);
+        this.settingsService.applySettings(updatedSettingsUsingScenario);
         if(scenario.autoFitCamera){
-            let _this = this;
-            setTimeout(function(){
-                _this.threeOrbitControlsService.autoFitTo();
+            setTimeout(() => {
+                this.threeOrbitControlsService.autoFitTo();
             },10);
         }
     }
 
-    /**
-     * Returns an array of all scenarios.
-     * @returns {Scenario[]} all scenarios
-     */
+    private updateSettingsUsingScenario(settings: Settings, scenarioSettings: Partial<Settings>): Settings {
+        let updatedSettings: Settings = settings;
+        if (updatedSettings) {
+            for(let key of Object.keys(updatedSettings)) {
+                if (scenarioSettings.hasOwnProperty(key)) {
+                    if(key == "map") { continue; }
+
+                    if(typeof settings[key] === "object") {
+                        updatedSettings[key] = this.updateSettingsUsingScenario(updatedSettings[key], scenarioSettings[key]);
+                    } else {
+                        updatedSettings[key] = scenarioSettings[key];
+                    }
+                }
+            }
+        }
+        return updatedSettings;
+    }
+
     public getScenarios(): Scenario[] {
         return this.scenarios.filter(s => this.isScenarioPossible(s, this.dataService._data.metrics));
     }
@@ -69,12 +78,8 @@ export class ScenarioService {
         metrics.filter(x => x === scenario.settings.colorMetric).length > 0);
     }
 
-    /**
-     * Returns the default scenario.
-     * @returns {Scenario} the scenario
-     */
     public getDefaultScenario(): Scenario {
-        return createDefaultScenario(this.settingsService.settings.map, this.settingsService.computeMargin());
+        return this.scenarios.find(s => s.name == "Complexity");
     }
 
 }

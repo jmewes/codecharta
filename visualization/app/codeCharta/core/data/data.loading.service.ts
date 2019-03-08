@@ -20,7 +20,7 @@ export class DataLoadingService {
      * @returns {Promise} which resolves when the filecontent is valid and stored in dataService.
      * The Promise rejects when errors happen. The errors are provided as parameters of the rejection function
      */
-    loadMapFromFileContent(fileName: string, fileContent: any, revision: number = 0): Promise<CodeMap> {
+    public loadMapFromFileContent(fileName: string, fileContent: any, revision: number = 0): Promise<CodeMap> {
 
         return new Promise((resolve, reject) => {
 
@@ -31,7 +31,7 @@ export class DataLoadingService {
                         fileName: fileName, 
                         projectName: fileContent.projectName,
                         apiVersion: fileContent.apiVersion,
-                        root: fileContent.nodes[0],
+                        nodes: fileContent.nodes[0],
                         edges: fileContent.edges || [],
                         attributeTypes: fileContent.attributeTypes || {},
                         blacklist: fileContent.blacklist || [],
