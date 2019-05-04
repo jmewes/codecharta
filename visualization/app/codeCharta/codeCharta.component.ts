@@ -31,8 +31,6 @@ export class CodeChartaController implements SettingsServiceSubscriber, CodeChar
 		focusedNodePath: ""
 	}
 
-	private urlUtils: UrlExtractor
-
 	/* @ngInject */
 	constructor(
 		private threeOrbitControlsService: ThreeOrbitControlsService,
@@ -49,7 +47,6 @@ export class CodeChartaController implements SettingsServiceSubscriber, CodeChar
 		SettingsService.subscribe(this.$rootScope, this)
 		CodeChartaController.subscribe(this.$rootScope, this)
 
-		this.urlUtils = new UrlExtractor(this.$location, this.$http)
 		this.onLoadingStatusChanged(true, undefined)
 		this.loadFileOrSample()
 	}
@@ -72,7 +69,7 @@ export class CodeChartaController implements SettingsServiceSubscriber, CodeChar
 	}
 
 	public loadFileOrSample() {
-		return this.urlUtils.getFileDataFromQueryParam()
+		UrlExtractor.getFileDataFromQueryParam(this.$location, this.$http)
 			.then((data: NameDataPair[]) => {
 				if (data.length > 0) {
 					this.tryLoadingFiles(data)
@@ -89,7 +86,7 @@ export class CodeChartaController implements SettingsServiceSubscriber, CodeChar
 	}
 
 	public tryLoadingSampleFiles() {
-		if (this.urlUtils.getParameterByName("file")) {
+		if (UrlExtractor.getParameterByName("file", this.$location)) {
 			this.dialogService.showErrorDialog(
 				"One or more files from the given file URL parameter could not be loaded. Loading sample files instead."
 			)
@@ -115,7 +112,7 @@ export class CodeChartaController implements SettingsServiceSubscriber, CodeChar
     }
 
     private setRenderStateFromUrl() {
-		const renderState: string = this.urlUtils.getParameterByName("mode")
+		const renderState: string = UrlExtractor.getParameterByName("mode", this.$location)
 		const files = this.fileStateService.getCCFiles()
 
 		if (renderState === "Delta" && files.length >= 2) {

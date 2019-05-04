@@ -3,14 +3,12 @@ import { ILocationService, IHttpService } from "angular"
 import { UrlExtractor } from "./urlExtractor"
 
 describe("urlExtractor", () => {
-	let urlExtractor: UrlExtractor
 	let $location: ILocationService
 	let $http: IHttpService
 
 	beforeEach(() => {
 		restartSystem()
 		withMockedMethods()
-		rebuildController()
 	})
 
 	function restartSystem() {
@@ -18,16 +16,12 @@ describe("urlExtractor", () => {
 		$http = getService<IHttpService>("$http")
 	}
 
-	function rebuildController() {
-		urlExtractor = new UrlExtractor($location, $http)
-	}
-
 	function withMockedMethods() {
 		$location.absUrl = jest.fn(() => {
 			return "http://testurl?file=valid.json"
 		})
 
-		$http.get = jest.fn(file => {
+		$http.get = jest.fn(fileName => {
 			return new Promise((resolve, reject) => {
 				resolve({ data: "some data", status: 200 })
 			})
@@ -40,7 +34,7 @@ describe("urlExtractor", () => {
 
 	describe("getParameterByName", () => {
 		it("should return fileName for given parameter name 'file'", () => {
-			const result = urlExtractor.getParameterByName("file")
+			const result = UrlExtractor.getParameterByName("file", $location)
 			expect(result).toBe("valid.json")
 		})
 
@@ -48,7 +42,7 @@ describe("urlExtractor", () => {
 			$location.absUrl = jest.fn(() => {
 				return "http://testurl?file=valid.json&mode=Delta"
 			})
-			const result = urlExtractor.getParameterByName("mode")
+			const result = UrlExtractor.getParameterByName("mode", $location)
 			expect(result).toBe("Delta")
 		})
 	})
@@ -59,7 +53,7 @@ describe("urlExtractor", () => {
 				return {}
 			})
 
-			const result = await urlExtractor.getFileDataFromQueryParam()
+			const result = await UrlExtractor.getFileDataFromQueryParam($location, $http)
 			const expected = []
 
 			expect(result).toEqual(expected)
@@ -69,18 +63,18 @@ describe("urlExtractor", () => {
 			$location.search = jest.fn(() => {
 				return { file: { data: "some data" } }
 			})
-			urlExtractor.getFileDataFromFile = jest.fn(fileName => {
+			UrlExtractor["getFileDataFromFile"] = jest.fn((fileName, $http) => {
 				return new Promise((resolve, reject) => {
 					resolve(fileName)
 				})
 			})
 
-			const result = await urlExtractor.getFileDataFromQueryParam()
+			const result = await UrlExtractor.getFileDataFromQueryParam($location, $http)
 			const expected = [{ data: "some data" }]
 
 			expect(result).toEqual(expected)
-			expect(urlExtractor.getFileDataFromFile).toHaveBeenCalledTimes(1)
-			expect(urlExtractor.getFileDataFromFile).toHaveBeenCalledWith({ data: "some data" })
+			expect(UrlExtractor["getFileDataFromFile"]).toHaveBeenCalledTimes(1)
+			expect(UrlExtractor["getFileDataFromFile"]).toHaveBeenCalledWith({ data: "some data" }, $http)
 		})
 
 		it("should return an array of resolved file data", () => {
@@ -88,7 +82,7 @@ describe("urlExtractor", () => {
 				return { file: ["some data", "some more"] }
 			})
 
-			urlExtractor.getFileDataFromFile = jest.fn(fileName => {
+			UrlExtractor["getFileDataFromFile"] = jest.fn((fileName, $http) => {
 				return new Promise((resolve, reject) => {
 					resolve(fileName)
 				})
@@ -96,7 +90,7 @@ describe("urlExtractor", () => {
 
 			const expected = ["some data", "some more"]
 
-			return expect(urlExtractor.getFileDataFromQueryParam()).resolves.toEqual(expected)
+			return expect(UrlExtractor.getFileDataFromQueryParam($location, $http)).resolves.toEqual(expected)
 		})
 
 		it("should return the first filename rejected", () => {
@@ -104,7 +98,7 @@ describe("urlExtractor", () => {
 				return { file: ["some data", "some more"] }
 			})
 
-			urlExtractor.getFileDataFromFile = jest.fn(fileName => {
+			UrlExtractor["getFileDataFromFile"] = jest.fn((fileName, $http) => {
 				return new Promise((resolve, reject) => {
 					reject(fileName)
 				})
@@ -112,22 +106,22 @@ describe("urlExtractor", () => {
 
 			const expected = "some data"
 
-			return expect(urlExtractor.getFileDataFromQueryParam()).rejects.toMatch(expected)
+			return expect(UrlExtractor.getFileDataFromQueryParam($location, $http)).rejects.toMatch(expected)
 		})
 	})
 
 	describe("getFileDataFromFile", () => {
 		it("should reject if file is not existing ", () => {
-			return expect(urlExtractor.getFileDataFromFile(null)).rejects.toEqual(undefined)
+			return expect(UrlExtractor["getFileDataFromFile"](null, $http)).rejects.toEqual(undefined)
 		})
 
 		it("should reject if file length is 0 ", () => {
-			return expect(urlExtractor.getFileDataFromFile("")).rejects.toEqual(undefined)
+			return expect(UrlExtractor["getFileDataFromFile"]("", $http)).rejects.toEqual(undefined)
 		})
 
 		it("should resolve data and return an object with content and fileName", () => {
 			const expected = { content: "some data", fileName: "test.json" }
-			return expect(urlExtractor.getFileDataFromFile("test.json")).resolves.toEqual(expected)
+			return expect(UrlExtractor["getFileDataFromFile"]("test.json", $http)).resolves.toEqual(expected)
 		})
 
 		it("should reject if statuscode is not 200", async () => {
@@ -136,7 +130,7 @@ describe("urlExtractor", () => {
 					resolve({ data: "some data", status: 201 })
 				})
 			})
-			return expect(urlExtractor.getFileDataFromFile("test.json")).rejects.toEqual(undefined)
+			return expect(UrlExtractor["getFileDataFromFile"]("test.json", $http)).rejects.toEqual(undefined)
 		})
 	})
 })

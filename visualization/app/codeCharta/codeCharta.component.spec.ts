@@ -11,6 +11,7 @@ import { Settings } from "./codeCharta.model"
 import { SETTINGS } from "./util/dataMocks"
 import { ScenarioHelper } from "./util/scenarioHelper"
 import { FileStateService } from "./state/fileState.service"
+import { UrlExtractor } from "./util/urlExtractor";
 
 describe("codeChartaController", () => {
 	let codeChartaController: CodeChartaController
@@ -90,10 +91,8 @@ describe("codeChartaController", () => {
 	}
 
 	function withMockedUrlUtils() {
-		codeChartaController["urlUtils"] = jest.fn().mockReturnValue({
-			getFileDataFromQueryParam : jest.fn().mockReturnValue(Promise.resolve([])),
-			getParameterByName : jest.fn().mockReturnValue(true)
-		})()
+		UrlExtractor.getFileDataFromQueryParam = jest.fn().mockReturnValue(Promise.resolve([]))
+		UrlExtractor.getParameterByName = jest.fn().mockReturnValue(true)
 	}
 
 	function withMockedSettingsService() {
@@ -136,12 +135,6 @@ describe("codeChartaController", () => {
 			rebuildController()
 
 			expect(CodeChartaController.subscribe).toHaveBeenCalledWith($rootScope, codeChartaController)
-		})
-
-		it("should set urlUtils", () => {
-			rebuildController()
-
-			expect(codeChartaController["urlUtils"]).toBeDefined()
 		})
 
 		it("should set attribute isLoadingFile to true", () => {
@@ -187,7 +180,7 @@ describe("codeChartaController", () => {
 		})
 
 		it("should call loadFiles when data is not an empty array", async () => {
-			codeChartaController["urlUtils"].getFileDataFromQueryParam = jest.fn().mockReturnValue(Promise.resolve([{}]))
+			UrlExtractor.getFileDataFromQueryParam = jest.fn().mockReturnValue(Promise.resolve([{}]))
 
 			await codeChartaController.loadFileOrSample()
 
@@ -195,7 +188,7 @@ describe("codeChartaController", () => {
 		})
 
 		it("should call updateSettings if loadFiles-Promise resolves", async () => {
-			codeChartaController["urlUtils"].getFileDataFromQueryParam = jest.fn().mockReturnValue(Promise.resolve([{}]))
+			UrlExtractor.getFileDataFromQueryParam = jest.fn().mockReturnValue(Promise.resolve([{}]))
 
 			await codeChartaController.loadFileOrSample()
 
@@ -207,7 +200,7 @@ describe("codeChartaController", () => {
 		it("should call getParameterByName with 'file'", () => {
 			codeChartaController.tryLoadingSampleFiles()
 
-			expect(codeChartaController["urlUtils"].getParameterByName).toHaveBeenCalledWith("file")
+			expect(UrlExtractor.getParameterByName).toHaveBeenCalledWith("file", $location)
 		})
 
 		it("should call showErrorDialog when no file is found", () => {
